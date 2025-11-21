@@ -135,6 +135,54 @@ in
               };
             };
           };
+          docker = lib.mkOption {
+            description = "Docker settings.";
+            default = { };
+            type = lib.types.submodule {
+              options = {
+                network = lib.mkOption {
+                  description = "The node's network options.";
+                  default = { };
+                  type = lib.types.submodule {
+                    options = {
+                      interface = lib.mkOption {
+                        description = "interface";
+                        default = "172.18.0.1";
+                        type = lib.types.str;
+                      };
+                      interfaces = lib.mkOption {
+                        description = "interfaces";
+                        default = { };
+                        type = lib.types.submodule {
+                          options = {
+                            v4 = lib.mkOption {
+                              description = "v4";
+                              default = { };
+                              type = lib.types.submodule {
+                                options = {
+                                  subnet = lib.mkOption {
+                                    description = "subnet";
+                                    default = "172.18.0.0/16";
+                                    type = lib.types.str;
+                                  };
+            
+                                  gateway = lib.mkOption {
+                                    description = "gateway";
+                                    default = "172.18.0.1";
+                                    type = lib.types.str;
+                                  };
+                                };
+                              };
+                            };
+                          };
+                        };
+                      };
+                    };
+                  };
+                };
+              };
+            };
+          };
 
           allowedMounts = lib.mkOption {
             description = "Allowed mounts for the node.";
