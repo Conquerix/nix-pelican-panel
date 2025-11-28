@@ -168,11 +168,21 @@ in
       requires = [ "docker.service" ];
       wantedBy = [ "multi-user.target" ];
 
+      preStart = ''
+        mkdir -p /var/log/pelican
+        chown pelican:pelican /var/log/pelican
+      '';
+
       serviceConfig = {
         ExecStart = "${wingsPackage}/bin/wings";
+        User = "pelican";
+        Group = "pelican";
         Restart = "always";
         RestartSec = "5s";
         SupplementaryGroups = [ "docker" ];
+        WorkingDirectory = "/var/lib/pelican";
+        StateDirectory = "pelican";
+        LogsDirectory = "pelican";
       };
     };
 
@@ -189,6 +199,7 @@ in
     users.users.pelican = {
       isSystemUser = true;
       group = "pelican";
+      extraGroups = [ "docker" ];
     };
 
     users.groups.pelican = { };
