@@ -185,6 +185,7 @@ in
 
           "${pkgs.bash}/bin/bash -c 'HOME=/tmp COMPOSER_HOME=/tmp ${pkgs.php.packages.composer}/bin/composer dump-autoload --working-dir=${cfg.runtimeLocation} --no-interaction'"
         ];
+        ExecStartPost = "${pkgs.systemd}/bin/systemctl reload-or-restart phpfpm-${cfg.phpfpm.poolName}";
         RemainAfterExit = true;
       };
     };
