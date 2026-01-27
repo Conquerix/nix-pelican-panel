@@ -176,14 +176,16 @@ in
             ${pkgs.rsync}/bin/rsync -a --delete \
             --exclude='.env' \
             --exclude='storage' \
-            --exclude='bootstrap/cache' \
             --exclude='database/database.sqlite' \
             ${pelicanPanelPkg}/share/php/pelican-panel/ \
             ${cfg.runtimeLocation}/
           ''
           "${pkgs.coreutils}/bin/chown -R ${cfg.user}:${cfg.group} ${cfg.runtimeLocation}"
           "${pkgs.coreutils}/bin/chmod -R 755 ${cfg.runtimeLocation}"
+
+          "${pkgs.bash}/bin/bash -c 'HOME=/tmp COMPOSER_HOME=/tmp ${pkgs.php.packages.composer}/bin/composer dump-autoload --working-dir=${cfg.runtimeLocation} --no-interaction'"
         ];
+        ExecStartPost = "${pkgs.systemd}/bin/systemctl reload-or-restart phpfpm-${cfg.phpfpm.poolName}";
         RemainAfterExit = true;
       };
     };
@@ -192,7 +194,10 @@ in
 
     systemd.services.pelican-panel-queue = {
       description = "Pelican Panel queue worker";
-      after = [ "network.target" ];
+      after = [
+        "network.target"
+        "pelican-panel-deploy.service"
+      ];
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         ExecStart = "${pkgs.php}/bin/php ${cfg.runtimeLocation}/artisan queue:work --sleep=3 --tries=3";
@@ -205,6 +210,7 @@ in
 
     systemd.services.pelican-panel-schedule = {
       description = "Run Pelican Panel schedule";
+      after = [ "pelican-panel-deploy.service" ];
       serviceConfig = {
         ExecStart = "${pkgs.php}/bin/php ${cfg.runtimeLocation}/artisan schedule:run";
         User = cfg.user;
