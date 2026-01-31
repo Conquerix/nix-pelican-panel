@@ -246,7 +246,7 @@ in
         Restart = "always";
         RestartSec = "5s";
         SupplementaryGroups = [ "docker" ];
-        WorkingDirectory = cfg.system.root_directory;
+        WorkingDirectory = cfg.node.system.root_directory;
         StateDirectory = "pelican";
         LogsDirectory = "pelican";
       };
