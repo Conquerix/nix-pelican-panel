@@ -111,6 +111,24 @@ in
             default = { };
             type = lib.types.submodule {
               options = {
+                root_directory = lib.mkOption {
+                  description = "Path to the wings root dir.";
+                  default = "/var/lib/pelican";
+                  type = lib.types.path;
+                };
+
+                backup_directory = lib.mkOption {
+                  description = "Path to store the node's backups.";
+                  default = "/var/lib/pelican/backups";
+                  type = lib.types.path;
+                };
+
+                archive_directory = lib.mkOption {
+                  description = "Path to store the node's archives.";
+                  default = "/var/lib/pelican/archives";
+                  type = lib.types.path;
+                };
+
                 data = lib.mkOption {
                   description = "Path to store the node's data.";
                   default = "/var/lib/pelican/volumes";
@@ -228,7 +246,7 @@ in
         Restart = "always";
         RestartSec = "5s";
         SupplementaryGroups = [ "docker" ];
-        WorkingDirectory = "/var/lib/pelican";
+        WorkingDirectory = cfg.system.root_directory;
         StateDirectory = "pelican";
         LogsDirectory = "pelican";
       };
