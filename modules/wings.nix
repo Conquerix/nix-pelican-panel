@@ -240,7 +240,7 @@ in
       '';
 
       serviceConfig = {
-        ExecStart = "${wingsPackage}/bin/wings";
+        ExecStart = "${wingsPackage}/bin/wings --config ${configPath}";
         User = "pelican";
         Group = "pelican";
         Restart = "always";
