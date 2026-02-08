@@ -16,11 +16,31 @@ let
   configPathInEtc = "/pelican/config.yml";
   configPath = "/etc" + configPathInEtc;
 
-  tokenWriterScript = pkgs.writeShellScript "wings-token-writer" ''
-    #!/usr/bin/env bash
+
+  configWithoutToken = convertAttributes (
+    builtins.removeAttrs cfg.node [ "tokenPath" ]
+  );
+
+  baseConfigFile = (pkgs.formats.yaml { }).generate "wings-config-base.yml" configWithoutToken;
+
+  setupConfigScript = pkgs.writeShellScript "setup-wings-config" ''
     set -euo pipefail
-    TOKEN=$(${pkgs.coreutils}/bin/cat ${cfg.node.tokenPath})
-    ${pkgs.yq-go}/bin/yq -i ".token = \"$TOKEN\"" "${configPath}"
+
+    if [ ! -f "${cfg.node.tokenPath}" ]; then
+      echo "Error: Token file ${cfg.node.tokenPath} not found!"
+      exit 1
+    fi
+
+    TOKEN=$(${pkgs.coreutils}/bin/cat "${cfg.node.tokenPath}")
+
+    ${pkgs.coreutils}/bin/mkdir -p /etc/pelican
+
+    ${pkgs.coreutils}/bin/cp "${baseConfigFile}" "${configPath}.tmp"
+    echo "token: $TOKEN" >> "${configPath}.tmp"
+    ${pkgs.coreutils}/bin/mv "${configPath}.tmp" "${configPath}"
+
+    ${pkgs.coreutils}/bin/chown pelican:pelican "${configPath}"
+    ${pkgs.coreutils}/bin/chmod 640 "${configPath}"
   '';
 in
 {
@@ -219,19 +239,39 @@ in
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [ wingsPackage ];
-    environment.etc."${configPathInEtc}".source = (pkgs.formats.yaml { }).generate "" (
-      convertAttributes cfg.node
-    );
 
     virtualisation.docker.enable = true;
+
+    systemd.tmpfiles.rules = [
+      "d /etc/pelican 0755 pelican pelican -"
+    ];
+
+    systemd.services.wings-config-setup = {
+      description = "Setup Wings configuration with token";
+      wantedBy = [ "multi-user.target" ];
+      before = [ "wings.service" ];
+      after = [ "systemd-tmpfiles-setup.service" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = setupConfigScript;
+        RemainAfterExit = true;
+      };
+
+      restartTriggers = [ cfg.node.tokenPath ];
+    };
 
     systemd.services.wings = {
       description = "Wings Daemon";
       after = [
         "network.target"
         "docker.service"
+        "wings-config-setup.service"
       ];
-      requires = [ "docker.service" ];
+      requires = [
+        "docker.service"
+        "wings-config-setup.service"
+      ];
       wantedBy = [ "multi-user.target" ];
 
       preStart = ''
@@ -249,16 +289,6 @@ in
         WorkingDirectory = cfg.node.system.root_directory;
         StateDirectory = "pelican";
         LogsDirectory = "pelican";
-      };
-    };
-
-    systemd.services.wings-token-writer = {
-      description = "Write token";
-      wantedBy = [ "multi-user.target" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-        ExecStart = tokenWriterScript;
       };
     };
 
